@@ -25,7 +25,7 @@ opt-level = 'z'   # Optimize for size
 panic = 'abort'   # Abort on panic
 
 [dependencies]
-clap = {version = "4.3.4", features = ["cargo"]}
+clap = {version = "4.3.4", features = ["cargo", "derive"]}
 colored = {version = "2.0.0", optional = true}
 colored_json = {version = "5.0.0", optional = true}
 either = "1.8.1"
