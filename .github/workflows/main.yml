@@ -39,9 +39,9 @@ jobs:
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target
     steps:
-    - uses: actions/checkout@master
+    - uses: actions/checkout@v4
     - name: cache CARGO_HOME
-      uses: actions/cache@v1
+      uses: actions/cache@v4
       with:
         path: ~/.cargo
         key: ${{ runner.os }}-cargo-home-${{ hashFiles('**/Cargo.toml') }}
@@ -53,6 +53,16 @@ jobs:
         export PATH="$HOME/.cargo/bin:$PATH"
         rustup override set ${{ matrix.rust }}
         echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    - name: install libarchive (ubuntu-latest)
+      shell: bash
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt update
+        sudo apt-get install --yes --no-install-recommends libarchive-dev
+    - name: install libarchive (macos-latest)
+      shell: bash
+      if: matrix.os == 'macos-latest'
+      run: brew install libarchive
     - name: rustfmt
       shell: bash
       if: matrix.rust == 'stable'
@@ -64,10 +74,25 @@ jobs:
       if: matrix.rust == 'stable'
       run: |
         rustup component add clippy
-        cargo clippy --all -- -D clippy::all -D clippy::pedantic
-    - run: cargo build
-    - run: cargo build --all-targets
-    - run: cargo build --no-default-features --features elf
-    - run: cargo build --no-default-features --features pe
-    - run: cargo build --no-default-features --features macho
-    - run: cargo test
+        cargo clippy --all-targets -- -D clippy::all -D clippy::pedantic
+        cargo clippy --all-targets --no-default-features --features elf -- -D clippy::all -D clippy::pedantic
+        cargo clippy --all-targets --no-default-features --features macho -- -D clippy::all -D clippy::pedantic
+        cargo clippy --all-targets --no-default-features --features pe -- -D clippy::all -D clippy::pedantic
+        cargo clippy --all-targets --all-features -- -D clippy::all -D clippy::pedantic
+
+    - name: test
+      shell: bash
+      run: cargo test
+
+    - name: build
+      shell: bash
+      run: |
+        cargo build --all-targets
+        cargo build --all-targets --no-default-features --features elf
+        cargo build --all-targets --no-default-features --features macho
+        cargo build --all-targets --no-default-features --features pe
+
+    - name: build all features
+      shell: bash
+      if: matrix.os == 'ubuntu-latest' || matrix.os == 'macos-latest'
+      run: cargo build --all-targets --all-features
