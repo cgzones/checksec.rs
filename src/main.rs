@@ -12,7 +12,6 @@ use clap::CommandFactory;
 use clap::Parser;
 use clap::Subcommand;
 use clap::{arg, command};
-#[cfg(all(feature = "maps", target_os = "linux"))]
 use either::Either;
 use goblin::error::Error;
 #[cfg(feature = "macho")]
@@ -34,7 +33,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::io::IsTerminal;
-use std::io::{BufRead, ErrorKind};
+use std::io::{BufRead, ErrorKind, Read};
 #[cfg(all(feature = "color", not(target_os = "windows")))]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
@@ -325,8 +324,15 @@ fn parse(
         }
     }
 
-    let fp = fs::File::open(file)?;
-    let buffer = unsafe { Mmap::map(&fp)? };
+    let mut fp = fs::File::open(file)?;
+    let buffer = if let Ok(buf) = unsafe { Mmap::map(&fp) } {
+        Either::Left(buf)
+    } else {
+        let size = fp.metadata().map(|m| m.len()).unwrap_or(0);
+        let mut buf = Vec::with_capacity(usize::try_from(size).unwrap());
+        fp.read_to_end(&mut buf)?;
+        Either::Right(buf)
+    };
 
     let result = parse_bytes(&buffer, file)?;
     if let Some(ref mut cache) = cache {
