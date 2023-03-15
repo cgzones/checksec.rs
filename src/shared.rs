@@ -32,11 +32,11 @@ impl Deref for VecRpath {
 #[cfg(not(feature = "color"))]
 impl fmt::Display for VecRpath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut s: Vec<String> = Vec::<String>::new();
+        let mut s: Vec<&str> = Vec::new();
         for v in &self.paths {
             match v {
-                Rpath::Yes(p) | Rpath::YesRW(p) => s.push(p.to_string()),
-                Rpath::None => s.push("None".to_string()),
+                Rpath::Yes(p) | Rpath::YesRW(p) => s.push(p),
+                Rpath::None => s.push("None"),
             }
         }
         write!(f, "{}", s.join(":"))
