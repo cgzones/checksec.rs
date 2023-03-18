@@ -446,6 +446,9 @@ const FORTIFIABLE_FUNCTIONS: [&str; 79] = [
 impl Properties for Elf<'_> {
     fn has_canary(&self) -> bool {
         for sym in &self.dynsyms {
+            if !sym.is_function() {
+                continue;
+            }
             if let Some(name) = self.dynstrtab.get_at(sym.st_name) {
                 match name {
                     "__stack_chk_fail" | "__intel_security_cookie" => {
@@ -460,6 +463,9 @@ impl Properties for Elf<'_> {
     #[allow(clippy::case_sensitive_file_extension_comparisons)]
     fn has_clang_cfi(&self) -> bool {
         for sym in &self.syms {
+            if !sym.is_function() {
+                continue;
+            }
             if let Some(name) = self.strtab.get_at(sym.st_name) {
                 if name.ends_with(".cfi") {
                     return true;
@@ -467,6 +473,9 @@ impl Properties for Elf<'_> {
             }
         }
         for sym in &self.dynsyms {
+            if !sym.is_function() {
+                continue;
+            }
             if let Some(name) = self.dynstrtab.get_at(sym.st_name) {
                 if name.ends_with(".cfi") || name == "__cfi_init" {
                     return true;
@@ -477,6 +486,9 @@ impl Properties for Elf<'_> {
     }
     fn has_clang_safestack(&self) -> bool {
         for sym in &self.dynsyms {
+            if !sym.is_function() {
+                continue;
+            }
             if let Some(name) = self.dynstrtab.get_at(sym.st_name) {
                 if name == "__safestack_init" {
                     return true;
