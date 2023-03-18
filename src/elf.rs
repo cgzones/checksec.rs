@@ -9,7 +9,7 @@ use goblin::elf::dynamic::{
 #[cfg(feature = "disassembly")]
 use goblin::elf::header::EM_X86_64;
 use goblin::elf::header::ET_DYN;
-use goblin::elf::program_header::{PF_X, PT_GNU_RELRO, PT_GNU_STACK};
+use goblin::elf::program_header::{PT_GNU_RELRO, PT_GNU_STACK};
 #[cfg(feature = "disassembly")]
 use goblin::elf::section_header::{SHF_ALLOC, SHF_EXECINSTR, SHT_PROGBITS};
 use goblin::elf::Elf;
@@ -582,10 +582,7 @@ impl Properties for Elf<'_> {
     fn has_nx(&self) -> bool {
         for header in &self.program_headers {
             if header.p_type == PT_GNU_STACK {
-                if PF_X != header.p_flags & PF_X {
-                    return true;
-                }
-                break;
+                return !header.is_executable();
             }
         }
         false
