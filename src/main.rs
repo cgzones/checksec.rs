@@ -328,11 +328,12 @@ impl From<compress_tools::Error> for ParseError {
 
 type Cache = Arc<Mutex<HashMap<PathBuf, Vec<Binary>>>>;
 
+#[allow(clippy::needless_pass_by_value)]
 fn parse(
     file: &Path,
-    cache: &mut Option<Cache>,
+    cache: Option<Cache>,
 ) -> Result<Vec<Binary>, ParseError> {
-    if let Some(ref mut cache) = cache {
+    if let Some(ref cache) = cache {
         let cache = cache.lock().unwrap();
         if let Some(entry) = cache.get(file) {
             return Ok(entry.clone());
@@ -350,7 +351,7 @@ fn parse(
     };
 
     let result = parse_bytes(&buffer, file)?;
-    if let Some(ref mut cache) = cache {
+    if let Some(ref cache) = cache {
         let mut cache = cache.lock().unwrap();
         cache.insert(file.to_path_buf(), result.clone());
     }
@@ -534,15 +535,15 @@ fn parse_single_file(
     file: &Path,
     _scan_dynlibs: bool,
 ) -> Result<Vec<Binary>, ParseError> {
-    parse(file, &mut None)
+    parse(file, None)
 }
 
 #[cfg(not(all(target_os = "linux", feature = "elf")))]
 fn parse_file_impl(
     file: &Path,
     _scan_dynlibs: bool,
-    _lookup: &Option<Lookup>,
-    cache: &mut Option<Cache>,
+    _lookup: Option<&Lookup>,
+    cache: Option<Cache>,
 ) -> Result<Vec<Binary>, ParseError> {
     parse(file, cache)
 }
@@ -587,10 +588,11 @@ fn scan_dependencies(
 }
 
 #[cfg(all(target_os = "linux", feature = "elf"))]
+#[allow(clippy::needless_pass_by_value)]
 fn parse_dependencies(
     binary: &mut Binary,
     lookup: &Lookup,
-    cache: &Option<Cache>,
+    cache: Option<Cache>,
 ) {
     let mut scanned = HashSet::new();
     let mut to_scan = scan_dependencies(binary, lookup, &scanned);
@@ -598,18 +600,16 @@ fn parse_dependencies(
     while !to_scan.is_empty() {
         let mut results: Vec<Binary> = to_scan
             .par_iter()
-            .filter_map(|lib| {
-                match parse(lib, &mut cache.as_ref().map(Arc::clone)) {
-                    Ok(bins) => Some(bins),
-                    Err(err) => {
-                        eprintln!(
-                            "Failed to parse {} for {}: {}",
-                            lib.display(),
-                            binary.file.display(),
-                            err
-                        );
-                        None
-                    }
+            .filter_map(|lib| match parse(lib, cache.clone()) {
+                Ok(bins) => Some(bins),
+                Err(err) => {
+                    eprintln!(
+                        "Failed to parse {} for {}: {}",
+                        lib.display(),
+                        binary.file.display(),
+                        err
+                    );
+                    None
                 }
             })
             .flatten()
@@ -627,13 +627,14 @@ fn parse_dependencies(
 }
 
 #[cfg(all(target_os = "linux", feature = "elf"))]
+#[allow(clippy::needless_pass_by_value)]
 fn parse_file_impl(
     file: &Path,
     scan_dynlibs: bool,
-    lookup: &Option<Lookup>,
-    cache: &mut Option<Cache>,
+    lookup: Option<&Lookup>,
+    cache: Option<Cache>,
 ) -> Result<Vec<Binary>, ParseError> {
-    let mut results = parse(file, cache)?;
+    let mut results = parse(file, cache.clone())?;
 
     if !scan_dynlibs || lookup.is_none() {
         return Ok(results);
@@ -642,7 +643,7 @@ fn parse_file_impl(
     let lookup = lookup.as_ref().unwrap();
 
     for result in &mut results {
-        parse_dependencies(result, lookup, cache);
+        parse_dependencies(result, lookup, cache.clone());
     }
 
     Ok(results)
@@ -654,12 +655,12 @@ fn parse_single_file(
     scan_dynlibs: bool,
 ) -> Result<Vec<Binary>, ParseError> {
     if !scan_dynlibs {
-        return parse(file, &mut None);
+        return parse(file, None);
     }
 
     let lookup = Lookup { elf: LibraryLookup::new()? };
 
-    parse_file_impl(file, true, &Some(lookup), &mut None)
+    parse_file_impl(file, true, Some(&lookup), None)
 }
 
 fn walk(basepath: &Path, scan_dynlibs: bool) -> Vec<Binary> {
@@ -687,8 +688,8 @@ fn walk(basepath: &Path, scan_dynlibs: bool) -> Vec<Binary> {
             parse_file_impl(
                 entry.path(),
                 scan_dynlibs,
-                &lookup,
-                &mut Some(Arc::clone(&cache)),
+                lookup.as_ref(),
+                Some(Arc::clone(&cache)),
             )
             .ok()
         })
@@ -697,9 +698,10 @@ fn walk(basepath: &Path, scan_dynlibs: bool) -> Vec<Binary> {
 }
 
 #[cfg(all(feature = "maps", target_os = "linux"))]
+#[allow(clippy::needless_pass_by_value)]
 fn parse_process_libraries(
     process: &sysinfo::Process,
-    cache: &mut Option<Cache>,
+    cache: Option<Cache>,
 ) -> Result<Vec<Binary>, std::io::Error> {
     Ok(Process::parse_maps(process.pid().as_u32() as usize)?
         .into_iter()
@@ -727,7 +729,7 @@ fn parse_process_libraries(
         .unique()
         .par_bridge()
         .filter_map(|p| {
-            parse(&p, &mut cache.as_ref().map(Arc::clone))
+            parse(&p, cache.clone())
                 .map_err(|err| {
                     if let ParseError::IO(ref e) = err {
                         if e.kind() == ErrorKind::NotFound
@@ -751,9 +753,10 @@ fn parse_process_libraries(
 }
 
 #[cfg(not(all(feature = "maps", target_os = "linux")))]
+#[allow(clippy::needless_pass_by_value)]
 fn parse_process_libraries(
     _process: &sysinfo::Process,
-    _cache: &mut Option<Cache>,
+    _cache: Option<Cache>,
 ) -> Result<Vec<Binary>, std::io::Error> {
     Err(std::io::Error::new(
         ErrorKind::Unsupported,
@@ -774,7 +777,7 @@ where
     processes
         .par_bridge()
         .filter_map(|process| {
-            match parse(process.exe(), &mut Some(Arc::clone(&cache))) {
+            match parse(process.exe(), Some(Arc::clone(&cache))) {
                 Err(err) => {
                     if quiet {
                         if let ParseError::IO(ref e) = err {
@@ -804,7 +807,7 @@ where
                                 if scan_dynlibs {
                                     parse_process_libraries(
                                         process,
-                                        &mut Some(Arc::clone(&cache)),
+                                        Some(Arc::clone(&cache)),
                                     )
                                     .ok()
                                 } else {
