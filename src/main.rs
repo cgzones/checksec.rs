@@ -17,7 +17,7 @@ use goblin::error::Error;
 #[cfg(feature = "macho")]
 use goblin::mach::{Mach, SingleArch::Archive, SingleArch::MachO};
 use goblin::Object;
-use ignore::Walk;
+use ignore::WalkBuilder;
 #[cfg(all(feature = "maps", target_os = "linux"))]
 use itertools::Itertools;
 use memmap2::Mmap;
@@ -331,6 +331,7 @@ type Cache = Arc<Mutex<HashMap<PathBuf, Vec<Binary>>>>;
 #[allow(clippy::needless_pass_by_value)]
 fn parse(
     file: &Path,
+    scan_archives: bool,
     cache: Option<Cache>,
 ) -> Result<Vec<Binary>, ParseError> {
     if let Some(ref cache) = cache {
@@ -350,7 +351,7 @@ fn parse(
         Either::Right(buf)
     };
 
-    let result = parse_bytes(&buffer, file)?;
+    let result = parse_bytes(&buffer, scan_archives, file)?;
     if let Some(ref cache) = cache {
         let mut cache = cache.lock().unwrap();
         cache.insert(file.to_path_buf(), result.clone());
@@ -360,7 +361,11 @@ fn parse(
 }
 
 #[allow(clippy::too_many_lines)]
-fn parse_bytes(bytes: &[u8], file: &Path) -> Result<Vec<Binary>, ParseError> {
+fn parse_bytes(
+    bytes: &[u8],
+    scan_archives: bool,
+    file: &Path,
+) -> Result<Vec<Binary>, ParseError> {
     match Object::parse(bytes)? {
         #[cfg(feature = "elf")]
         Object::Elf(elf) => {
@@ -449,9 +454,19 @@ fn parse_bytes(bytes: &[u8], file: &Path) -> Result<Vec<Binary>, ParseError> {
         Object::PE(_) => Err(ParseError::Unimplemented("PE")),
         #[cfg(not(feature = "macho"))]
         Object::Mach(_) => Err(ParseError::Unimplemented("MachO")),
-        Object::Archive(archive) => Ok(parse_archive(&archive, file, bytes)),
+        Object::Archive(archive) => {
+            if scan_archives {
+                Ok(parse_archive(&archive, file, bytes))
+            } else {
+                Ok(vec![])
+            }
+        }
         #[cfg(feature = "archives")]
         Object::Unknown(magic) => {
+            if !scan_archives {
+                return Ok(vec![]);
+            }
+
             let mut results = Vec::new();
             let mut handled = false;
 
@@ -471,6 +486,7 @@ fn parse_bytes(bytes: &[u8], file: &Path) -> Result<Vec<Binary>, ParseError> {
 
                             if let Ok(mut res) = parse_bytes(
                                 &buffer,
+                                true,
                                 Path::new(&format!(
                                     "{}\u{2794}{}",
                                     file.display(),
@@ -509,6 +525,7 @@ fn parse_archive(
         .filter_map(|member_name| match archive.extract(member_name, bytes) {
             Ok(ext_bytes) => parse_bytes(
                 ext_bytes,
+                true,
                 Path::new(&format!(
                     "{}\u{2794}{}",
                     file.display(),
@@ -535,17 +552,18 @@ fn parse_single_file(
     file: &Path,
     _scan_dynlibs: bool,
 ) -> Result<Vec<Binary>, ParseError> {
-    parse(file, None)
+    parse(file, true, None)
 }
 
 #[cfg(not(all(target_os = "linux", feature = "elf")))]
 fn parse_file_impl(
     file: &Path,
     _scan_dynlibs: bool,
+    scan_archives: bool,
     _lookup: Option<&Lookup>,
     cache: Option<Cache>,
 ) -> Result<Vec<Binary>, ParseError> {
-    parse(file, cache)
+    parse(file, scan_archives, cache)
 }
 
 #[cfg(all(target_os = "linux", feature = "elf"))]
@@ -600,7 +618,7 @@ fn parse_dependencies(
     while !to_scan.is_empty() {
         let mut results: Vec<Binary> = to_scan
             .par_iter()
-            .filter_map(|lib| match parse(lib, cache.clone()) {
+            .filter_map(|lib| match parse(lib, true, cache.clone()) {
                 Ok(bins) => Some(bins),
                 Err(err) => {
                     eprintln!(
@@ -631,10 +649,11 @@ fn parse_dependencies(
 fn parse_file_impl(
     file: &Path,
     scan_dynlibs: bool,
+    scan_archives: bool,
     lookup: Option<&Lookup>,
     cache: Option<Cache>,
 ) -> Result<Vec<Binary>, ParseError> {
-    let mut results = parse(file, cache.clone())?;
+    let mut results = parse(file, scan_archives, cache.clone())?;
 
     if !scan_dynlibs || lookup.is_none() {
         return Ok(results);
@@ -655,15 +674,20 @@ fn parse_single_file(
     scan_dynlibs: bool,
 ) -> Result<Vec<Binary>, ParseError> {
     if !scan_dynlibs {
-        return parse(file, None);
+        return parse(file, true, None);
     }
 
     let lookup = Lookup { elf: LibraryLookup::new()? };
 
-    parse_file_impl(file, true, Some(&lookup), None)
+    parse_file_impl(file, true, true, Some(&lookup), None)
 }
 
-fn walk(basepath: &Path, scan_dynlibs: bool) -> Vec<Binary> {
+fn walk(
+    basepath: &Path,
+    scan_dynlibs: bool,
+    scan_same_filesystem: bool,
+    scan_archives: bool,
+) -> Vec<Binary> {
     let lookup = if scan_dynlibs {
         Some(Lookup {
             #[cfg(all(target_os = "linux", feature = "elf"))]
@@ -678,7 +702,9 @@ fn walk(basepath: &Path, scan_dynlibs: bool) -> Vec<Binary> {
 
     let cache = Arc::new(Mutex::new(HashMap::new()));
 
-    Walk::new(basepath)
+    WalkBuilder::new(basepath)
+        .same_file_system(scan_same_filesystem)
+        .build()
         .flatten()
         .filter(|entry| {
             entry.file_type().filter(std::fs::FileType::is_file).is_some()
@@ -688,6 +714,7 @@ fn walk(basepath: &Path, scan_dynlibs: bool) -> Vec<Binary> {
             parse_file_impl(
                 entry.path(),
                 scan_dynlibs,
+                scan_archives,
                 lookup.as_ref(),
                 Some(Arc::clone(&cache)),
             )
@@ -729,7 +756,7 @@ fn parse_process_libraries(
         .unique()
         .par_bridge()
         .filter_map(|p| {
-            parse(&p, cache.clone())
+            parse(&p, true, cache.clone())
                 .map_err(|err| {
                     if let ParseError::IO(ref e) = err {
                         if e.kind() == ErrorKind::NotFound
@@ -777,7 +804,7 @@ where
     processes
         .par_bridge()
         .filter_map(|process| {
-            match parse(process.exe(), Some(Arc::clone(&cache))) {
+            match parse(process.exe(), true, Some(Arc::clone(&cache))) {
                 Err(err) => {
                     if quiet {
                         if let ParseError::IO(ref e) = err {
@@ -851,6 +878,12 @@ enum Commands {
     File {
         #[arg(required = true)]
         paths: Vec<PathBuf>,
+        /// Scan only files on the same filesystem
+        #[arg(short = 'S', long)]
+        same_filesystem: bool,
+        /// Scan archives, e.g. distribution packages (.deb) or static libraries (.a)
+        #[arg(short = 'A', long)]
+        archives: bool,
     },
     /// Scan processes by PID
     #[command(arg_required_else_help = true)]
@@ -891,8 +924,9 @@ fn main() {
     );
 
     match args.command {
-        Some(Commands::File { paths }) => {
-            let results = scan_paths(&paths, args.libraries);
+        Some(Commands::File { paths, same_filesystem, archives }) => {
+            let results =
+                scan_paths(&paths, args.libraries, same_filesystem, archives);
             print_binary_results(&results, &settings);
         }
         Some(Commands::ProcID { pids, maps }) => {
@@ -946,7 +980,12 @@ fn main() {
     };
 }
 
-fn scan_paths(paths: &[PathBuf], libraries: bool) -> Vec<Binary> {
+fn scan_paths(
+    paths: &[PathBuf],
+    libraries: bool,
+    scan_same_filesystem: bool,
+    scan_archives: bool,
+) -> Vec<Binary> {
     let mut results = Vec::new();
 
     for path in paths {
@@ -979,7 +1018,12 @@ fn scan_paths(paths: &[PathBuf], libraries: bool) -> Vec<Binary> {
 
         if metadata.is_dir() {
             // TODO: reuse cache
-            results.append(&mut walk(path, libraries));
+            results.append(&mut walk(
+                path,
+                libraries,
+                scan_same_filesystem,
+                scan_archives,
+            ));
             continue;
         }
 
