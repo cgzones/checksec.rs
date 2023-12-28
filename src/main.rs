@@ -24,9 +24,7 @@ use memmap2::Mmap;
 use rayon::iter::ParallelBridge;
 use rayon::prelude::*;
 use serde_json::{json, to_string_pretty};
-use sysinfo::{
-    PidExt, ProcessExt, ProcessRefreshKind, RefreshKind, System, SystemExt,
-};
+use sysinfo::{ProcessRefreshKind, RefreshKind, System, UpdateKind};
 
 use std::collections::HashMap;
 #[cfg(all(target_os = "linux", feature = "elf"))]
@@ -734,7 +732,7 @@ fn parse_process_libraries(
         .into_iter()
         .filter(|m| m.flags.x)
         .filter_map(|m| m.pathname)
-        .filter(|p| p.is_absolute() && p != process.exe())
+        .filter(|p| p.is_absolute() && process.exe().is_some_and(|e| e != p))
         .map(|p| match p.file_name() {
             Some(file_name) => match file_name.to_str() {
                 Some(file_name) => {
@@ -804,7 +802,8 @@ where
     processes
         .par_bridge()
         .filter_map(|process| {
-            match parse(process.exe(), true, Some(Arc::clone(&cache))) {
+            let exe = process.exe()?;
+            match parse(exe, true, Some(Arc::clone(&cache))) {
                 Err(err) => {
                     if quiet {
                         if let ParseError::IO(ref e) = err {
@@ -817,7 +816,7 @@ where
                     }
 
                     eprintln!(
-                        "Can not parse process {} with ID {}: {}",
+                        "Can not parse process {:?} with ID {}: {}",
                         process.name(),
                         process.pid(),
                         err
@@ -1036,11 +1035,14 @@ fn scan_paths(
     results
 }
 
+fn get_system() -> System {
+    System::new_with_specifics(RefreshKind::new().with_processes(
+        ProcessRefreshKind::new().with_exe(UpdateKind::OnlyIfNotSet),
+    ))
+}
+
 fn scan_pids(pids: &[sysinfo::Pid], libraries: bool) -> Vec<Process> {
-    let system = System::new_with_specifics(
-        RefreshKind::new()
-            .with_processes(ProcessRefreshKind::new().with_cpu()),
-    );
+    let system = get_system();
 
     parse_processes(
         pids.iter().filter_map(|pid| {
@@ -1057,18 +1059,17 @@ fn scan_pids(pids: &[sysinfo::Pid], libraries: bool) -> Vec<Process> {
 }
 
 fn scan_procnames(procnames: &[String], libraries: bool) -> Vec<Process> {
-    let system = System::new_with_specifics(
-        RefreshKind::new()
-            .with_processes(ProcessRefreshKind::new().with_cpu()),
-    );
+    let system = get_system();
 
     parse_processes(
         procnames
             .iter()
             .filter_map(|procname| {
                 // processes_by_name() returns an Iterator not implementing Send
-                let procs: Vec<_> =
-                    system.processes_by_name(procname).collect();
+                let procs: Vec<_> = system
+                    .processes_by_name(procname.as_ref())
+                    .filter(|process| process.thread_kind().is_none())
+                    .collect();
                 if procs.is_empty() {
                     eprintln!("No process found with name {procname}");
                     None
@@ -1083,13 +1084,14 @@ fn scan_procnames(procnames: &[String], libraries: bool) -> Vec<Process> {
 }
 
 fn scan_all_processes(libraries: bool) -> Vec<Process> {
-    let system = System::new_with_specifics(
-        RefreshKind::new()
-            .with_processes(ProcessRefreshKind::new().with_cpu()),
-    );
+    let system = get_system();
 
     parse_processes(
-        system.processes().iter().map(|(_pid, process)| process),
+        system
+            .processes()
+            .iter()
+            .filter(|(_pid, process)| process.thread_kind().is_none())
+            .map(|(_pid, process)| process),
         true,
         libraries,
     )
