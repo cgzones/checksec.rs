@@ -26,6 +26,7 @@ use rayon::prelude::*;
 use serde_json::{json, to_string_pretty};
 use sysinfo::{ProcessRefreshKind, RefreshKind, System, UpdateKind};
 
+use std::any::type_name_of_val;
 use std::collections::HashMap;
 #[cfg(all(target_os = "linux", feature = "elf"))]
 use std::collections::HashSet;
@@ -509,6 +510,7 @@ fn parse_bytes(
         Object::Unknown(magic) => {
             Err(ParseError::Goblin(Error::BadMagic(magic)))
         }
+        obj => Err(ParseError::Unimplemented(type_name_of_val(&obj))),
     }
 }
 
