@@ -185,6 +185,7 @@ pub fn has_stack_clash_protection(
 }
 
 #[cfg(feature = "disassembly")]
+#[must_use]
 fn is_stack_pointer(reg: iced_x86::Register, bitness: Bitness) -> bool {
     reg == match bitness {
         Bitness::B64 => iced_x86::Register::RSP,
