@@ -151,6 +151,7 @@ impl fmt::Display for Fortify {
 ///     }
 /// }
 /// ```
+#[allow(clippy::doc_markdown)]
 #[allow(clippy::struct_excessive_bools)]
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct CheckSecResults {

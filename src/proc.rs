@@ -8,7 +8,6 @@ use serde::{Deserialize, Serialize};
 #[cfg(all(feature = "maps", not(target_os = "macos")))]
 use std::fmt;
 
-use std::usize;
 #[cfg(all(feature = "maps", target_os = "linux"))]
 use std::{fs, io::ErrorKind};
 #[cfg(all(

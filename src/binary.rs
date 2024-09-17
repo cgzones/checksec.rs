@@ -1,8 +1,8 @@
 #[cfg(feature = "color")]
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::path::PathBuf;
-use std::{fmt, usize};
 
 #[cfg(feature = "elf")]
 use checksec::elf;
