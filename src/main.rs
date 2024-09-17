@@ -661,9 +661,10 @@ fn parse_file_impl(
 
     let lookup = lookup.as_ref().unwrap();
 
-    for result in &mut results {
-        parse_dependencies(result, lookup, cache.clone());
-    }
+    results
+        .iter_mut()
+        .par_bridge()
+        .for_each(|binary| parse_dependencies(binary, lookup, cache.clone()));
 
     Ok(results)
 }
