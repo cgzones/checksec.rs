@@ -356,7 +356,8 @@ pub trait Properties {
 }
 
 // readelf -s -W /lib/x86_64-linux-gnu/libc.so.6 | grep _chk
-const FORTIFIABLE_FUNCTIONS: [&str; 79] = [
+// Last update on Glibc 2.38
+const FORTIFIABLE_FUNCTIONS: [&str; 83] = [
     "asprintf",
     "confstr",
     "dprintf",
@@ -405,6 +406,8 @@ const FORTIFIABLE_FUNCTIONS: [&str; 79] = [
     "stpncpy",
     "strcat",
     "strcpy",
+    "strlcat",
+    "strlcpy",
     "strncat",
     "strncpy",
     "swprintf",
@@ -425,6 +428,8 @@ const FORTIFIABLE_FUNCTIONS: [&str; 79] = [
     "wcrtomb",
     "wcscat",
     "wcscpy",
+    "wcslcat",
+    "wcslcpy",
     "wcsncat",
     "wcsncpy",
     "wcsnrtombs",
