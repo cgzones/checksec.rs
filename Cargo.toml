@@ -25,23 +25,23 @@ opt-level = 'z'   # Optimize for size
 panic = 'abort'   # Abort on panic
 
 [dependencies]
-clap = {version = "4.0.14", features = ["cargo"]}
+clap = {version = "4.3.4", features = ["cargo"]}
 colored = {version = "2.0.0", optional = true}
-colored_json = {version = "3.0.1", optional = true}
+colored_json = {version = "5.0.0", optional = true}
 either = "1.8.1"
-glob = "0.3.0"
-goblin = "0.6.0"
-iced-x86 = {version = "1.18.0", optional = true}
-ignore = "0.4.18"
-itertools = "0.10.5"
-memmap2 = "0.5.7"
+glob = "0.3.1"
+goblin = "0.7.1"
+iced-x86 = {version = "1.19.0", optional = true}
+ignore = "0.4.20"
+itertools = "0.13.0"
+memmap2 = "0.9.0"
 rayon = "1.7.0"
 scroll = "0.11.0"
 scroll_derive = "0.11.0"
-serde = {version = "1.0.145", features = ["derive"]}
-serde_derive = "1.0.145"
-serde_json = "1.0.86"
-sysinfo = "0.28.2"
+serde = {version = "1.0.164", features = ["derive"]}
+serde_derive = "1.0.164"
+serde_json = "1.0.96"
+sysinfo = "0.29.2"
 
 [target.'cfg(target_os="windows")'.dependencies]
 windows = {version = "0.42.0", features = [
