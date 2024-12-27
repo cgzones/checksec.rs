@@ -1039,8 +1039,8 @@ fn scan_paths(
 }
 
 fn get_system() -> System {
-    System::new_with_specifics(RefreshKind::new().with_processes(
-        ProcessRefreshKind::new().with_exe(UpdateKind::OnlyIfNotSet),
+    System::new_with_specifics(RefreshKind::nothing().with_processes(
+        ProcessRefreshKind::nothing().with_exe(UpdateKind::OnlyIfNotSet),
     ))
 }
 
