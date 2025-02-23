@@ -702,7 +702,7 @@ impl LibraryLookup {
         };
 
         for rpath in rpath.iter().filter_map(|rpath| match rpath {
-            Rpath::YesRW(ref str) | Rpath::Yes(ref str) => Some(str),
+            Rpath::YesRW(str) | Rpath::Yes(str) => Some(str),
             Rpath::None => None,
         }) {
             let rpath = if let Some(p) = parentbinpath {
@@ -721,7 +721,7 @@ impl LibraryLookup {
         }
 
         for runpath in runpath.iter().filter_map(|rpath| match rpath {
-            Rpath::YesRW(ref str) | Rpath::Yes(ref str) => Some(str),
+            Rpath::YesRW(str) | Rpath::Yes(str) => Some(str),
 
             Rpath::None => None,
         }) {

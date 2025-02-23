@@ -3,7 +3,7 @@ authors = ["etke"]
 categories = ["command-line-utilities"]
 description = "Fast multi-platform (ELF/PE/MachO) binary checksec command line utility and library."
 documentation = "https://docs.rs/checksec"
-edition = "2021"
+edition = "2024"
 homepage = "https://crates.io/crates/checksec"
 include = [
   "src/*.rs",
