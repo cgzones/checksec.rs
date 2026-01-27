@@ -11,12 +11,11 @@ extern crate sysinfo;
 use clap::CommandFactory;
 use clap::Parser;
 use clap::Subcommand;
-use clap::{arg, command};
 use either::Either;
+use goblin::Object;
 use goblin::error::Error;
 #[cfg(feature = "macho")]
 use goblin::mach::{Mach, SingleArch::Archive, SingleArch::MachO};
-use goblin::Object;
 use ignore::WalkBuilder;
 #[cfg(all(feature = "maps", target_os = "linux"))]
 use itertools::Itertools;
@@ -204,12 +203,14 @@ fn print_process_results(
                 for blob in &process.binary.blobs {
                     println!(
                         "{}({})\n \u{21aa} {}: | {} | {} {}",
-                        bold!(process
-                            .binary
-                            .file
-                            .file_name()
-                            .unwrap_or_else(|| OsStr::new("n/a"))
-                            .to_string_lossy()),
+                        bold!(
+                            process
+                                .binary
+                                .file
+                                .file_name()
+                                .unwrap_or_else(|| OsStr::new("n/a"))
+                                .to_string_lossy()
+                        ),
                         process.pid,
                         blob.binarytype,
                         blob.properties,

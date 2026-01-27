@@ -2,11 +2,11 @@ extern crate checksec;
 extern crate goblin;
 
 use checksec::macho::CheckSecResults;
-use goblin::mach::cputype::get_arch_name_from_types;
+use goblin::Object;
 use goblin::mach::Mach;
 use goblin::mach::SingleArch::Archive;
 use goblin::mach::SingleArch::MachO;
-use goblin::Object;
+use goblin::mach::cputype::get_arch_name_from_types;
 use std::{env, fs};
 
 fn main() {

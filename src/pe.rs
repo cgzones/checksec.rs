@@ -1,8 +1,8 @@
 //! Implements checksec for PE32/32+ binaries
 #[cfg(feature = "color")]
 use colored::Colorize;
-use goblin::pe::utils::find_offset;
 use goblin::pe::PE;
+use goblin::pe::utils::find_offset;
 use goblin::pe::{
     data_directories::DataDirectory, options::ParseOptions,
     section_table::SectionTable,

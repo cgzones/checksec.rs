@@ -3,6 +3,7 @@
 use colored::Colorize;
 #[cfg(target_os = "linux")]
 use either::Either;
+use goblin::elf::Elf;
 use goblin::elf::dynamic::{
     DF_1_NOW, DF_1_PIE, DF_BIND_NOW, DT_RPATH, DT_RUNPATH,
 };
@@ -12,7 +13,6 @@ use goblin::elf::header::ET_DYN;
 use goblin::elf::program_header::{PT_GNU_RELRO, PT_GNU_STACK};
 #[cfg(feature = "disassembly")]
 use goblin::elf::section_header::{SHF_ALLOC, SHF_EXECINSTR, SHT_PROGBITS};
-use goblin::elf::Elf;
 use serde_derive::{Deserialize, Serialize};
 #[cfg(feature = "disassembly")]
 use std::convert::TryFrom;
@@ -23,7 +23,7 @@ use std::path::{Path, PathBuf};
 #[cfg(feature = "color")]
 use crate::colorize_bool;
 #[cfg(feature = "disassembly")]
-use crate::disassembly::{has_stack_clash_protection, Bitness};
+use crate::disassembly::{Bitness, has_stack_clash_protection};
 #[cfg(target_os = "linux")]
 use crate::ldso::{LdSoError, LdSoLookup};
 use crate::shared::{Rpath, VecRpath};
@@ -457,7 +457,7 @@ impl Properties for Elf<'_> {
             if let Some(name) = self.dynstrtab.get_at(sym.st_name) {
                 match name {
                     "__stack_chk_fail" | "__intel_security_cookie" => {
-                        return true
+                        return true;
                     }
                     _ => continue,
                 }
@@ -547,11 +547,7 @@ impl Properties for Elf<'_> {
                     }
                 });
 
-            if csp {
-                StackClash::Yes
-            } else {
-                StackClash::No
-            }
+            if csp { StackClash::Yes } else { StackClash::No }
         }
     }
     fn has_fortify(&self) -> bool {

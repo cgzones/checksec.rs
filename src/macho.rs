@@ -1,8 +1,8 @@
 //! Implements checksec for `MachO` binaries
 #[cfg(feature = "color")]
 use colored::Colorize;
-use goblin::mach::load_command::CommandVariant;
 use goblin::mach::MachO;
+use goblin::mach::load_command::CommandVariant;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

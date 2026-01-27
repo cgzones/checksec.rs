@@ -22,25 +22,25 @@ use windows::Win32::{
     Security::AdjustTokenPrivileges,
     System::{
         Diagnostics::{
-            Debug::{GetThreadContext, CONTEXT},
+            Debug::{CONTEXT, GetThreadContext},
             ToolHelp::{
-                CreateToolhelp32Snapshot, Heap32First, Heap32ListFirst,
-                Heap32ListNext, Heap32Next, Module32FirstW, Module32NextW,
-                Thread32First, Thread32Next, HEAPENTRY32, HEAPLIST32,
-                MODULEENTRY32W, TH32CS_SNAPHEAPLIST, TH32CS_SNAPMODULE,
-                TH32CS_SNAPMODULE32, TH32CS_SNAPTHREAD, THREADENTRY32,
+                CreateToolhelp32Snapshot, HEAPENTRY32, HEAPLIST32,
+                Heap32First, Heap32ListFirst, Heap32ListNext, Heap32Next,
+                MODULEENTRY32W, Module32FirstW, Module32NextW,
+                TH32CS_SNAPHEAPLIST, TH32CS_SNAPMODULE, TH32CS_SNAPMODULE32,
+                TH32CS_SNAPTHREAD, THREADENTRY32, Thread32First, Thread32Next,
             },
         },
         Memory::{
-            VirtualQueryEx, MEMORY_BASIC_INFORMATION, PAGE_EXECUTE,
-            PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY,
-            PAGE_GUARD, PAGE_PROTECTION_FLAGS, PAGE_READONLY, PAGE_READWRITE,
-            PAGE_WRITECOPY,
+            MEMORY_BASIC_INFORMATION, PAGE_EXECUTE, PAGE_EXECUTE_READ,
+            PAGE_EXECUTE_READWRITE, PAGE_EXECUTE_WRITECOPY, PAGE_GUARD,
+            PAGE_PROTECTION_FLAGS, PAGE_READONLY, PAGE_READWRITE,
+            PAGE_WRITECOPY, VirtualQueryEx,
         },
         Threading::{
-            GetCurrentThreadId, OpenProcess, OpenThread, ResumeThread,
-            SuspendThread, PROCESS_QUERY_INFORMATION, PROCESS_VM_READ,
-            THREAD_GET_CONTEXT, THREAD_QUERY_INFORMATION,
+            GetCurrentThreadId, OpenProcess, OpenThread,
+            PROCESS_QUERY_INFORMATION, PROCESS_VM_READ, ResumeThread,
+            SuspendThread, THREAD_GET_CONTEXT, THREAD_QUERY_INFORMATION,
             THREAD_SUSPEND_RESUME,
         },
     },
@@ -48,20 +48,20 @@ use windows::Win32::{
 
 #[cfg(all(feature = "maps", target_os = "windows"))]
 use windows::{
-    core::PCWSTR,
     Win32::{
         Foundation::{HANDLE, LUID},
         Security::{
-            LookupPrivilegeValueW, LUID_AND_ATTRIBUTES, SE_PRIVILEGE_ENABLED,
+            LUID_AND_ATTRIBUTES, LookupPrivilegeValueW, SE_PRIVILEGE_ENABLED,
             TOKEN_ADJUST_PRIVILEGES, TOKEN_PRIVILEGES, TOKEN_QUERY,
         },
         System::Threading::{GetCurrentProcess, OpenProcessToken},
     },
+    core::PCWSTR,
 };
 
 #[cfg(all(feature = "maps", target_os = "windows"))]
 use std::{
-    ffi::{c_void, OsStr},
+    ffi::{OsStr, c_void},
     iter::once,
     mem,
     os::windows::ffi::OsStrExt,
