@@ -240,12 +240,10 @@ fn print_process_results(
                     feature = "maps",
                     any(target_os = "linux", target_os = "windows")
                 ))]
-                if maps {
-                    if let Some(maps) = &process.maps {
-                        println!("{:>12}", "\u{21aa} Maps:");
-                        for map in maps {
-                            println!("\t{map}");
-                        }
+                if maps && let Some(maps) = &process.maps {
+                    println!("{:>12}", "\u{21aa} Maps:");
+                    for map in maps {
+                        println!("\t{map}");
                     }
                 }
             }
@@ -345,7 +343,7 @@ fn parse(
     let buffer = if let Ok(buf) = unsafe { Mmap::map(&fp) } {
         Either::Left(buf)
     } else {
-        let size = fp.metadata().map(|m| m.len()).unwrap_or(0);
+        let size = fp.metadata().map_or(0, |m| m.len());
         let mut buf = Vec::with_capacity(usize::try_from(size).unwrap());
         fp.read_to_end(&mut buf)?;
         Either::Right(buf)
@@ -760,12 +758,11 @@ fn parse_process_libraries(
         .filter_map(|p| {
             parse(&p, true, cache.clone())
                 .map_err(|err| {
-                    if let ParseError::IO(ref e) = err {
-                        if e.kind() == ErrorKind::NotFound
-                            || e.kind() == ErrorKind::PermissionDenied
-                        {
-                            return;
-                        }
+                    if let ParseError::IO(ref e) = err
+                        && (e.kind() == ErrorKind::NotFound
+                            || e.kind() == ErrorKind::PermissionDenied)
+                    {
+                        return;
                     }
 
                     eprintln!(
@@ -809,19 +806,17 @@ where
             let exe = process.exe()?;
             match parse(exe, true, Some(Arc::clone(&cache))) {
                 Err(err) => {
-                    if quiet {
-                        if let ParseError::IO(ref e) = err {
-                            if e.kind() == ErrorKind::NotFound
-                                || e.kind() == ErrorKind::PermissionDenied
-                            {
-                                return None;
-                            }
-                        }
+                    if quiet
+                        && let ParseError::IO(ref e) = err
+                        && (e.kind() == ErrorKind::NotFound
+                            || e.kind() == ErrorKind::PermissionDenied)
+                    {
+                        return None;
                     }
 
                     eprintln!(
-                        "Can not parse process {:?} with ID {}: {}",
-                        process.name(),
+                        "Can not parse process {} with ID {}: {}",
+                        process.name().display(),
                         process.pid(),
                         err
                     );
@@ -980,7 +975,7 @@ fn main() {
                 .collect();
             print_binary_results(&results, &settings);
         }
-    };
+    }
 }
 
 fn scan_paths(

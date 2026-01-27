@@ -256,10 +256,10 @@ impl Properties for MachO<'_> {
     }
     fn has_restrict(&self) -> bool {
         for segment in &self.segments {
-            if let Ok(name) = segment.name() {
-                if name.to_string().to_lowercase() == "__restrict" {
-                    return true;
-                }
+            if let Ok(name) = segment.name()
+                && name.to_string().to_lowercase() == "__restrict"
+            {
+                return true;
             }
         }
         false

@@ -13,10 +13,10 @@ fn main() {
     let argv: Vec<String> = env::args().collect();
     match argv.len() {
         2 => {
-            if fs::File::open(&argv[1]).is_ok() {
-                if let Ok(buf) = fs::read(&argv[1]) {
-                    parse(&buf);
-                }
+            if fs::File::open(&argv[1]).is_ok()
+                && let Ok(buf) = fs::read(&argv[1])
+            {
+                parse(&buf);
             }
         }
         _ => eprintln!("Usage: macho_print_checksec_results <binary>"),

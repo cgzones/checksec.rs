@@ -471,20 +471,20 @@ impl Properties for Elf<'_> {
             if !sym.is_function() {
                 continue;
             }
-            if let Some(name) = self.strtab.get_at(sym.st_name) {
-                if name.ends_with(".cfi") {
-                    return true;
-                }
+            if let Some(name) = self.strtab.get_at(sym.st_name)
+                && name.ends_with(".cfi")
+            {
+                return true;
             }
         }
         for sym in &self.dynsyms {
             if !sym.is_function() {
                 continue;
             }
-            if let Some(name) = self.dynstrtab.get_at(sym.st_name) {
-                if name.ends_with(".cfi") || name == "__cfi_init" {
-                    return true;
-                }
+            if let Some(name) = self.dynstrtab.get_at(sym.st_name)
+                && (name.ends_with(".cfi") || name == "__cfi_init")
+            {
+                return true;
             }
         }
         false
@@ -494,10 +494,10 @@ impl Properties for Elf<'_> {
             if !sym.is_function() {
                 continue;
             }
-            if let Some(name) = self.dynstrtab.get_at(sym.st_name) {
-                if name == "__safestack_init" {
-                    return true;
-                }
+            if let Some(name) = self.dynstrtab.get_at(sym.st_name)
+                && name == "__safestack_init"
+            {
+                return true;
             }
         }
         false
@@ -505,10 +505,10 @@ impl Properties for Elf<'_> {
     #[allow(unused_variables)]
     fn has_stack_clash_protection(&self, bytes: &[u8]) -> StackClash {
         for sym in &self.syms {
-            if let Some(name) = self.strtab.get_at(sym.st_name) {
-                if name == "__rust_probestack" {
-                    return StackClash::Yes;
-                }
+            if let Some(name) = self.strtab.get_at(sym.st_name)
+                && name == "__rust_probestack"
+            {
+                return StackClash::Yes;
             }
         }
         #[cfg(not(feature = "disassembly"))]
@@ -555,10 +555,11 @@ impl Properties for Elf<'_> {
             if !sym.is_function() {
                 continue;
             }
-            if let Some(name) = self.dynstrtab.get_at(sym.st_name) {
-                if name.starts_with("__") && name.ends_with("_chk") {
-                    return true;
-                }
+            if let Some(name) = self.dynstrtab.get_at(sym.st_name)
+                && name.starts_with("__")
+                && name.ends_with("_chk")
+            {
+                return true;
             }
         }
         false
@@ -602,10 +603,10 @@ impl Properties for Elf<'_> {
     }
     fn has_pie(&self) -> PIE {
         if self.header.e_type == ET_DYN {
-            if let Some(dynamic) = &self.dynamic {
-                if DF_1_PIE & dynamic.info.flags_1 == DF_1_PIE {
-                    return PIE::PIE;
-                }
+            if let Some(dynamic) = &self.dynamic
+                && DF_1_PIE & dynamic.info.flags_1 == DF_1_PIE
+            {
+                return PIE::PIE;
             }
             return PIE::DSO;
         }
@@ -614,12 +615,11 @@ impl Properties for Elf<'_> {
     fn has_relro(&self) -> Relro {
         for header in &self.program_headers {
             if header.p_type == PT_GNU_RELRO {
-                if let Some(dynamic) = &self.dynamic {
-                    if DF_BIND_NOW & dynamic.info.flags == DF_BIND_NOW
-                        && DF_1_NOW & dynamic.info.flags_1 == DF_1_NOW
-                    {
-                        return Relro::Full;
-                    }
+                if let Some(dynamic) = &self.dynamic
+                    && DF_BIND_NOW & dynamic.info.flags == DF_BIND_NOW
+                    && DF_1_NOW & dynamic.info.flags_1 == DF_1_NOW
+                {
+                    return Relro::Full;
                 }
                 return Relro::Partial;
             }
@@ -627,26 +627,26 @@ impl Properties for Elf<'_> {
         Relro::None
     }
     fn has_rpath(&self) -> VecRpath {
-        if self.dynamic.is_some() {
-            if let Some(name) = self.get_dynstr_by_tag(DT_RPATH) {
-                return VecRpath::new(
-                    name.split(':')
-                        .map(|path| Rpath::Yes(path.to_string()))
-                        .collect(),
-                );
-            }
+        if self.dynamic.is_some()
+            && let Some(name) = self.get_dynstr_by_tag(DT_RPATH)
+        {
+            return VecRpath::new(
+                name.split(':')
+                    .map(|path| Rpath::Yes(path.to_string()))
+                    .collect(),
+            );
         }
         VecRpath::new(vec![Rpath::None])
     }
     fn has_runpath(&self) -> VecRpath {
-        if self.dynamic.is_some() {
-            if let Some(name) = self.get_dynstr_by_tag(DT_RUNPATH) {
-                return VecRpath::new(
-                    name.split(':')
-                        .map(|path| Rpath::Yes(path.to_string()))
-                        .collect(),
-                );
-            }
+        if self.dynamic.is_some()
+            && let Some(name) = self.get_dynstr_by_tag(DT_RUNPATH)
+        {
+            return VecRpath::new(
+                name.split(':')
+                    .map(|path| Rpath::Yes(path.to_string()))
+                    .collect(),
+            );
         }
         VecRpath::new(vec![Rpath::None])
     }

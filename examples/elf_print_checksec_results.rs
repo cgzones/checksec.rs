@@ -8,14 +8,14 @@ use std::{env, fs};
 fn main() {
     let argv: Vec<String> = env::args().collect();
     if argv.len() == 2 {
-        if fs::File::open(&argv[1]).is_ok() {
-            if let Ok(buf) = fs::read(&argv[1]) {
-                match Object::parse(&buf).unwrap() {
-                    Object::Elf(elf) => {
-                        println!("{:#?}", CheckSecResults::parse(&elf, &buf));
-                    }
-                    _ => println!("Not an elf binary."),
+        if fs::File::open(&argv[1]).is_ok()
+            && let Ok(buf) = fs::read(&argv[1])
+        {
+            match Object::parse(&buf).unwrap() {
+                Object::Elf(elf) => {
+                    println!("{:#?}", CheckSecResults::parse(&elf, &buf));
                 }
+                _ => println!("Not an elf binary."),
             }
         }
     } else {

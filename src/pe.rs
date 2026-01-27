@@ -515,21 +515,17 @@ impl Properties for PE<'_> {
             let sections = &self.sections;
             if let Some(load_config_hdr) =
                 optional_header.data_directories.get_load_config_table()
-            {
-                if let Ok(load_config_val) = get_load_config_val(
+                && let Ok(load_config_val) = get_load_config_val(
                     bytes,
                     *load_config_hdr,
                     sections,
                     file_alignment,
-                ) {
-                    if let Some(certificate_table) = optional_header
-                        .data_directories
-                        .get_certificate_table()
-                    {
-                        return load_config_val.code_integrity.flags != 0
-                            || certificate_table.virtual_address != 0;
-                    }
-                }
+                )
+                && let Some(certificate_table) =
+                    optional_header.data_directories.get_certificate_table()
+            {
+                return load_config_val.code_integrity.flags != 0
+                    || certificate_table.virtual_address != 0;
             }
         }
         false
@@ -546,14 +542,13 @@ impl Properties for PE<'_> {
         false
     }
     fn has_clr(&self) -> bool {
-        if let Some(optional_header) = self.header.optional_header {
-            if optional_header
+        if let Some(optional_header) = self.header.optional_header
+            && optional_header
                 .data_directories
                 .get_clr_runtime_header()
                 .is_some()
-            {
-                return true;
-            }
+        {
+            return true;
         }
         false
     }
@@ -596,15 +591,14 @@ impl Properties for PE<'_> {
             let sections = &self.sections;
             if let Some(load_config_hdr) =
                 optional_header.data_directories.get_load_config_table()
-            {
-                if let Ok(load_config_val) = get_load_config_val(
+                && let Ok(load_config_val) = get_load_config_val(
                     bytes,
                     *load_config_hdr,
                     sections,
                     file_alignment,
-                ) {
-                    return load_config_val.security_cookie != 0;
-                }
+                )
+            {
+                return load_config_val.security_cookie != 0;
             }
         }
         false
@@ -637,20 +631,19 @@ impl Properties for PE<'_> {
             let sections = &self.sections;
             if let Some(load_config_hdr) =
                 optional_header.data_directories.get_load_config_table()
-            {
-                if let Ok(load_config_val) = get_load_config_val(
+                && let Ok(load_config_val) = get_load_config_val(
                     bytes,
                     *load_config_hdr,
                     sections,
                     file_alignment,
-                ) {
-                    let guard_flags = load_config_val.guard_flags;
-                    if (guard_flags & IMAGE_GUARD_RF_INSTRUMENTED) != 0
-                        && (guard_flags & IMAGE_GUARD_RF_ENABLE) != 0
-                        || (guard_flags & IMAGE_GUARD_RF_STRICT) != 0
-                    {
-                        return true;
-                    }
+                )
+            {
+                let guard_flags = load_config_val.guard_flags;
+                if (guard_flags & IMAGE_GUARD_RF_INSTRUMENTED) != 0
+                    && (guard_flags & IMAGE_GUARD_RF_ENABLE) != 0
+                    || (guard_flags & IMAGE_GUARD_RF_STRICT) != 0
+                {
+                    return true;
                 }
             }
         }
@@ -662,15 +655,14 @@ impl Properties for PE<'_> {
             let sections = &self.sections;
             if let Some(load_config_hdr) =
                 optional_header.data_directories.get_load_config_table()
-            {
-                if let Ok(load_config_val) = get_load_config_val(
+                && let Ok(load_config_val) = get_load_config_val(
                     bytes,
                     *load_config_hdr,
                     sections,
                     file_alignment,
-                ) {
-                    return load_config_val.sehandler_count != 0;
-                }
+                )
+            {
+                return load_config_val.sehandler_count != 0;
             }
         }
         false
